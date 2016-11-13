@@ -17,6 +17,9 @@ typedef struct Pixel
 typedef struct
 {
     int kind; // 0 = camera, 1 = sphere, 2 = plane
+    double reflectivity;
+    double refractivity;
+    double ior;
     double diffuse_color[3];
     double specular_color[3];
     union
