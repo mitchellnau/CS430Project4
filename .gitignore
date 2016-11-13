@@ -45,3 +45,10 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+*.cbp
+*.o
+*.depend
+*.layout
+*.exe
+shading example.c
+shading example.c
