@@ -52,3 +52,4 @@ Temporary Items
 *.exe
 shading example.c
 shading example.c
+output.ppm
