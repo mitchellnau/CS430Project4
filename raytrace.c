@@ -17,9 +17,9 @@ typedef struct Pixel
 typedef struct
 {
     int kind; // 0 = camera, 1 = sphere, 2 = plane
-    double reflectivity;
-    double refractivity;
-    double ior;
+    //double reflectivity;
+    //double refractivity;
+    //double ior;
     double diffuse_color[3];
     double specular_color[3];
     union
@@ -417,7 +417,10 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                             (strcmp(key, "radial-a1") == 0) ||
                             (strcmp(key, "radial-a0") == 0) ||
                             (strcmp(key, "angular-a0") == 0) ||
-                            (strcmp(key, "theta") == 0))
+                            (strcmp(key, "theta") == 0) ||
+                            (strcmp(key, "reflectivity") == 0) ||
+                            (strcmp(key, "refractivity") == 0) ||
+                            (strcmp(key, "ior") == 0))
                     {
                         double value = next_number(json); //get the decimal number and store it in the relevant struct field
                         if(obj_or_light == 1)
@@ -504,6 +507,52 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                             if(value <= 0)           //a sphere cannot have a radius of 0 or less so print an error and exit
                             {
                                 fprintf(stderr, "Error: Sphere radius cannot be less than or equal to 0 on line %d.\n", line);
+                                exit(1);
+                            }
+                        }
+                        else if(temp.kind == 1)
+                        {
+                            if((strcmp(key, "reflectivity") == 0))
+                            {
+                                //temp.reflectivity = value;
+                                //w_attribute_counter++;
+                            }
+                            else if((strcmp(key, "refractivity") == 0))
+                            {
+                                //temp.refractivity = value;
+                                //w_attribute_counter++;
+                            }
+                            else if((strcmp(key, "ior") == 0))
+                            {
+                                //temp.ior = value;
+                                //w_attribute_counter++;
+                            }
+                            else
+                            {
+                                fprintf(stderr, "Error: Unexpected sphere attribute %s on line %d.\n", key, line);
+                                exit(1);
+                            }
+                        }
+                        else if(temp.kind == 2)
+                        {
+                            if((strcmp(key, "reflectivity") == 0))
+                            {
+                                //temp.reflectivity = value;
+                                //w_attribute_counter++;
+                            }
+                            else if((strcmp(key, "refractivity") == 0))
+                            {
+                                //temp.refractivity = value;
+                                //w_attribute_counter++;
+                            }
+                            else if((strcmp(key, "ior") == 0))
+                            {
+                                //temp.ior = value;
+                                //w_attribute_counter++;
+                            }
+                            else
+                            {
+                                fprintf(stderr, "Error: Unexpected plane attribute %s on line %d.\n", key, line);
                                 exit(1);
                             }
                         }
@@ -670,7 +719,7 @@ int* read_scene(char* filename, Object* objects, Light* lights)
             if(obj_or_light == 0 && temp.kind == 0 && (h_attribute_counter != 1 || w_attribute_counter != 1 || dc_attribute_counter != 0 ||
                     sc_attribute_counter != 0 || n_attribute_counter != 0 || r_attribute_counter != 0))
             {
-                fprintf(stderr, "Error: Expecting unique width, height, (or additionally position) attributes for camera object on line %d.\n");
+                fprintf(stderr, "Error: Expecting unique width, height, (or additionally position) attributes for camera object on line %d.\n", line);
                 exit(1);
             }
             if(obj_or_light == 0 && temp.kind == 1 && (dc_attribute_counter != 1 || sc_attribute_counter != 1 || r_attribute_counter != 1 ||
