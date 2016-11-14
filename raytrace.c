@@ -459,17 +459,17 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                         {
                             if((strcmp(key, "reflectivity") == 0))
                             {
-                                //temp.reflectivity = value;
+                                temp.sphere.reflectivity = value;
                                 //w_attribute_counter++;
                             }
                             else if((strcmp(key, "refractivity") == 0))
                             {
-                                //temp.refractivity = value;
+                                temp.sphere.refractivity = value;
                                 //w_attribute_counter++;
                             }
                             else if((strcmp(key, "ior") == 0))
                             {
-                                //temp.ior = value;
+                                temp.sphere.ior = value;
                                 //w_attribute_counter++;
                             }
                             else
@@ -482,17 +482,17 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                         {
                             if((strcmp(key, "reflectivity") == 0))
                             {
-                                //temp.reflectivity = value;
+                                temp.sphere.reflectivity = value;
                                 //w_attribute_counter++;
                             }
                             else if((strcmp(key, "refractivity") == 0))
                             {
-                                //temp.refractivity = value;
+                                temp.sphere.refractivity = value;
                                 //w_attribute_counter++;
                             }
                             else if((strcmp(key, "ior") == 0))
                             {
-                                //temp.ior = value;
+                                temp.sphere.ior = value;
                                 //w_attribute_counter++;
                             }
                             else
