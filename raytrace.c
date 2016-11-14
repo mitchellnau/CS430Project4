@@ -35,6 +35,9 @@ typedef struct
         {
             double center[3];
             double radius;
+            double reflectivity;
+            double refractivity;
+            double ior;
         } sphere;
         struct
         {
