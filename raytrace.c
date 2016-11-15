@@ -76,6 +76,13 @@ int pwidth, pheight, maxcv; //global variables to store p3 header information
 int line = 1;               //global variable to store line of json file currently being parsed
 int ns = 20;                //global variable to store phong reflectivity
 
+//this function clamps the input value between 0 and 1
+double clamp(double input)
+{
+    if(input < 0.0) return 0.0;
+    else if (input > 1.0) return 1.0;
+    else return input;
+}
 //this function calculates the amount of radial attenuation of a light for a given coordinate
 //based off of the parameters, calculating the distance between where the camera intersects the relevant object
 //and the light's position, then calculating the value to return based off of that and the passed in radial values

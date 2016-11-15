@@ -49,10 +49,3 @@ static inline void normalize(double* v)
     v[2] /= len;
 }
 
-//this function clamps the input value between 0 and 1
-double clamp(double input)
-{
-    if(input < 0.0) return 0.0;
-    else if (input > 1.0) return 1.0;
-    else return input;
-}
