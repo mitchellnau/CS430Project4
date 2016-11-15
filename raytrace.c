@@ -845,7 +845,7 @@ double* shoot(double* Ro, double* Rd, double best_t, int best_object, int numOfO
   }
 }*/
 
-double* shade(int best_object, int best_t, int numOfLights, int numOfObjects, Light* lights, Object* objects, double* Ro, double* Rd, int level)
+double* shade(double best_t, int best_object, int numOfObjects, Object* objects, int numOfLights, Light* lights,  double* Ro, double* Rd, int level)
 {
     double color[3] = {0,0,0}; //ambient lighting is 0
     if(level > MAX_RECURSION){
@@ -1075,7 +1075,7 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
             best_object = (int)ricochet[1];
 
             double color[3] = {0,0,0}; //ambient lighting is 0
-            double* resultcolor = shade(best_object, best_t, numOfLights, numOfObjects, &lights[0], &objects[0], &Ro, &Rd, 1);
+            double* resultcolor = shade(best_t, best_object, numOfObjects, &objects[0], numOfLights, &lights[0], &Ro, &Rd, 0);
             color[0] = resultcolor[0];
             color[1] = resultcolor[1];
             color[2] = resultcolor[2];
