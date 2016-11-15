@@ -283,6 +283,11 @@ int* read_scene(char* filename, Object* objects, Light* lights)
             Object temp;      //temporary variable to store the object
             Light templight;
 
+            //default values for reflectivity, refractivity, and index of refraction
+            temp.sphere.reflectivity = 0;
+            temp.sphere.refractivity = 0;
+            temp.sphere.ior = 1;
+
             int obj_or_light = 0;
 
             // Parse the object
