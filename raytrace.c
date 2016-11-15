@@ -7,6 +7,7 @@
 #include <math.h>
 #include <ctype.h>
 #include "3dmath.h"
+#define MAX_RECURSION 7
 
 //data type to store pixel rgb values
 typedef struct Pixel
@@ -823,6 +824,192 @@ double* shoot(double* Ro, double* Rd, double best_t, int best_object, int numOfO
     return returnVals;
 }
 
+/*color shade(objectid o, position x, vector ur , int level)
+{
+  if(level > max recursion level) return black;
+  else{
+        um = reflection_vector(x, o, ur);
+        (om,t) = shoot(x,um);
+        if(t== INFINITY)
+            color = background_color;
+        else{
+            m_color = shade(om,x+t*um,um, level + 1);
+            color = directshade(o,x,ur, mcolor, -um);
+            }
+        for(each light i in the scene)
+        {
+            if(light i is visible fromx)
+            color += directshade(o,x,ur, light[i].color, light[i].direction);
+        }
+        return color;
+  }
+}*/
+
+double* shade(int best_object, int best_t, int numOfLights, int numOfObjects, Light* lights, Object* objects, double* Ro, double* Rd, int level)
+{
+    double color[3] = {0,0,0}; //ambient lighting is 0
+    if(level > MAX_RECURSION){
+        double* returnVal = malloc(sizeof(double)*3);
+        returnVal[0] = color[0];
+        returnVal[1] = color[1];
+        returnVal[2] = color[2];
+        return returnVal;
+    }
+    else{
+        //Ron = best_t * Rd + Ro;
+        double Ron[3] = {0, 0, 0};
+        double test[3] = {0, 0, 0};
+        v3_scale(Rd, best_t, test);
+        v3_add(test, Ro, Ron);
+
+        int j;
+        for (j=0; j < numOfLights; j+=1)
+        {
+            // Shadow test
+            double Rdn[3] = {0, 0, 0};
+            //Rdn = light_position - Ron;
+            v3_subtract(lights[j*sizeof(Light)].position, Ron, Rdn);
+            double best_lobjt = INFINITY; //find the minimum best t intersection of any object
+            int closest_shadow_object = -1; //keep track of the corresponding object's index
+            double distance_to_light = sqrt(sqr(Rdn[0]) + sqr(Rdn[1]) + sqr(Rdn[2]));
+            normalize(Rdn);
+
+            //find the closest object to the shadow for shadow omission
+            double* ricochet2 = shoot(&Ron, &Rdn, best_lobjt, closest_shadow_object, numOfObjects, &objects[0], distance_to_light, best_object);
+
+            best_lobjt = ricochet2[0];
+            closest_shadow_object = (int)ricochet2[1];
+
+
+            if (closest_shadow_object == -1)
+            {
+                // N, L, R, V
+                double n[3] = {0, 0, 0};
+                double l[3] = {0, 0, 0};
+                double r[3] = {0, 0, 0};
+                double v[3] = {0, 0, 0};
+                double diffuse[3] = {0, 0, 0};
+                double specular[3] = {0, 0, 0};
+
+
+                //N = closest_object->normal; // plane
+                //N = Ron - closest_object->center; // sphere
+                if(objects[best_object*sizeof(Object)].kind  == 0)
+                {
+                    //camera found, do nothing
+                }
+                else if(objects[best_object*sizeof(Object)].kind  == 1)
+                {
+                    v3_subtract(Ron, objects[best_object*sizeof(Object)].sphere.center, n);
+                }
+                else if(objects[best_object*sizeof(Object)].kind  == 2)
+                {
+                    v3_scale(objects[best_object*sizeof(Object)].plane.normal, 1.0, n);
+                }
+                else
+                {
+                    fprintf(stderr, "Error: Unexpected object struct type located in memory, N could not be calculated.\n");
+                    exit(1);
+                }
+                normalize(n);
+
+                //L = Rdn; // light_position - Ron;
+                v3_scale(Rdn, 1.0, l);
+                normalize(l);
+
+                //R = reflection of L = (2N dot L)N - L;
+                double res[3] = {0, 0, 0};
+                double scaleFactor = 0.0;
+                v3_scale(n, 2.0, res); //2N
+                scaleFactor = v3_dot(res, l); //(2n dot L)
+                v3_scale(n, scaleFactor, res); //(2n dot L)N
+                v3_subtract(res, l, r); //(2N dot L)N - L = R
+
+
+                //V = Rd;
+                v3_scale(Rd, -1.0, v);
+
+                //calculates the diffuse light on an object based off of the equation
+                //Ksubd * IsubL * (N dot L) only if N dot L is greater than 0
+                double ndotl = v3_dot(n, l);
+                if(ndotl <= 0)
+                {
+                    ndotl = 0;
+                }
+
+                diffuse[0] = ndotl*objects[best_object*sizeof(Object)].diffuse_color[0]*lights[j*sizeof(Light)].color[0];
+                diffuse[1] = ndotl*objects[best_object*sizeof(Object)].diffuse_color[1]*lights[j*sizeof(Light)].color[1];
+                diffuse[2] = ndotl*objects[best_object*sizeof(Object)].diffuse_color[2]*lights[j*sizeof(Light)].color[2];
+
+                //calculates the specular light on an object based off of the equation
+                //Ksubs * IsubL * (V dot R)^ns only if N dot L and V dot R are greater than 0
+                double vdotr = v3_dot(v, r);
+                if(vdotr <= 0)
+                {
+                    vdotr = 0;
+                }
+
+                if(vdotr > 0 && ndotl > 0)
+                {
+                    specular[0] = pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[0]*lights[j*sizeof(Light)].color[0];
+                    specular[1] = pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[1]*lights[j*sizeof(Light)].color[1];
+                    specular[2] = pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[2]*lights[j*sizeof(Light)].color[2];
+                }
+
+                double angular_a0;
+                double light_dir[3] = {0,0,0};
+
+                //get the light's direction if it has one so that it can be passed into fang
+                if(lights[j*sizeof(Light)].kind == 1)
+                {
+                    light_dir[0] = lights[j*sizeof(Light)].spotlight.direction[0];
+                    light_dir[1] = lights[j*sizeof(Light)].spotlight.direction[1];
+                    light_dir[2] = lights[j*sizeof(Light)].spotlight.direction[2];
+                    angular_a0 = lights[j*sizeof(Light)].spotlight.angular_a0;
+                }
+
+                //get vobject so it can be passed into fang
+                double vobject[3] = {0, 0, 0};
+                v3_scale(Rdn, -1, vobject);
+                normalize(vobject);
+
+                //summation of all lights' effect on a given coordinate
+                color[0] += fang(lights[j*sizeof(Light)].kind,
+                                 lights[j*sizeof(Light)].theta,
+                                 light_dir, vobject,
+                                 lights[j*sizeof(Light)].spotlight.angular_a0)
+                            *frad(lights[j*sizeof(Light)].radial_a0,
+                                  lights[j*sizeof(Light)].radial_a1,
+                                  lights[j*sizeof(Light)].radial_a2,
+                                  best_t, Ro, Rd,
+                                  lights[j*sizeof(Light)].position)*(diffuse[0] + specular[0]); //frad() * fang() * (diffuse + specular);
+                color[1] += fang(lights[j*sizeof(Light)].kind,
+                                 lights[j*sizeof(Light)].theta,
+                                 light_dir, vobject,
+                                 lights[j*sizeof(Light)].spotlight.angular_a0)
+                            *frad(lights[j*sizeof(Light)].radial_a0,
+                                  lights[j*sizeof(Light)].radial_a1,
+                                  lights[j*sizeof(Light)].radial_a2,
+                                  best_t, Ro, Rd,
+                                  lights[j*sizeof(Light)].position)*(diffuse[1] + specular[1]);//frad() * fang() * (diffuse + specular);
+                color[2] += fang(lights[j*sizeof(Light)].kind,
+                                 lights[j*sizeof(Light)].theta,
+                                 light_dir, vobject,
+                                 lights[j*sizeof(Light)].spotlight.angular_a0)
+                            *frad(lights[j*sizeof(Light)].radial_a0,
+                                  lights[j*sizeof(Light)].radial_a1,
+                                  lights[j*sizeof(Light)].radial_a2,
+                                  best_t, Ro, Rd,
+                                  lights[j*sizeof(Light)].position)*(diffuse[2] + specular[2]);//frad() * fang() * (diffuse + specular);
+            }
+        }
+        double* returnVal = malloc(sizeof(double)*3);
+        returnVal[0] = color[0];
+        returnVal[1] = color[1];
+        returnVal[2] = color[2];
+        return returnVal;
+    }
+}
 
 
 //this function takes in the number of objects and lights in the input json file, memory where those objects and lights are stored,
@@ -836,7 +1023,7 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
     cy = 0;  // ||
     h = 1;   // ||
     w = 1;   // ||
-    int i, j, k;
+    int i;
     int found = 0; //tell whether a camera is found or not
     for (i=0; i < numOfObjects; i += 1) //get the first camera's x/y positions and width/height
     {
@@ -888,154 +1075,10 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
             best_object = (int)ricochet[1];
 
             double color[3] = {0,0,0}; //ambient lighting is 0
-
-            //Ron = best_t * Rd + Ro;
-            double Ron[3] = {0, 0, 0};
-            double test[3] = {0, 0, 0};
-            v3_scale(Rd, best_t, test);
-            v3_add(test, Ro, Ron);
-
-            for (j=0; j < numOfLights; j+=1)
-            {
-                // Shadow test
-                double Rdn[3] = {0, 0, 0};
-                //Rdn = light_position - Ron;
-                v3_subtract(lights[j*sizeof(Light)].position, Ron, Rdn);
-                double best_lobjt = INFINITY; //find the minimum best t intersection of any object
-                int closest_shadow_object = -1; //keep track of the corresponding object's index
-                double distance_to_light = sqrt(sqr(Rdn[0]) + sqr(Rdn[1]) + sqr(Rdn[2]));
-                normalize(Rdn);
-
-                //find the closest object to the shadow for shadow omission
-                double* ricochet2 = shoot(&Ron, &Rdn, best_lobjt, closest_shadow_object, numOfObjects, &objects[0], distance_to_light, best_object);
-
-                best_lobjt = ricochet2[0];
-                closest_shadow_object = (int)ricochet2[1];
-
-
-                if (closest_shadow_object == -1)
-                {
-                    // N, L, R, V
-                    double n[3] = {0, 0, 0};
-                    double l[3] = {0, 0, 0};
-                    double r[3] = {0, 0, 0};
-                    double v[3] = {0, 0, 0};
-                    double diffuse[3] = {0, 0, 0};
-                    double specular[3] = {0, 0, 0};
-
-
-                    //N = closest_object->normal; // plane
-                    //N = Ron - closest_object->center; // sphere
-                    if(objects[best_object*sizeof(Object)].kind  == 0)
-                    {
-                        //camera found, do nothing
-                    }
-                    else if(objects[best_object*sizeof(Object)].kind  == 1)
-                    {
-                        v3_subtract(Ron, objects[best_object*sizeof(Object)].sphere.center, n);
-                    }
-                    else if(objects[best_object*sizeof(Object)].kind  == 2)
-                    {
-                        v3_scale(objects[best_object*sizeof(Object)].plane.normal, 1.0, n);
-                    }
-                    else
-                    {
-                        fprintf(stderr, "Error: Unexpected object struct type located in memory, N could not be calculated.\n");
-                        exit(1);
-                    }
-                    normalize(n);
-
-                    //L = Rdn; // light_position - Ron;
-                    v3_scale(Rdn, 1.0, l);
-                    normalize(l);
-
-                    //R = reflection of L = (2N dot L)N - L;
-                    double res[3] = {0, 0, 0};
-                    double scaleFactor = 0.0;
-                    v3_scale(n, 2.0, res); //2N
-                    scaleFactor = v3_dot(res, l); //(2n dot L)
-                    v3_scale(n, scaleFactor, res); //(2n dot L)N
-                    v3_subtract(res, l, r); //(2N dot L)N - L = R
-
-
-                    //V = Rd;
-                    v3_scale(Rd, -1.0, v);
-
-                    //calculates the diffuse light on an object based off of the equation
-                    //Ksubd * IsubL * (N dot L) only if N dot L is greater than 0
-                    double ndotl = v3_dot(n, l);
-                    if(ndotl <= 0)
-                    {
-                        ndotl = 0;
-                    }
-
-                    diffuse[0] = ndotl*objects[best_object*sizeof(Object)].diffuse_color[0]*lights[j*sizeof(Light)].color[0];
-                    diffuse[1] = ndotl*objects[best_object*sizeof(Object)].diffuse_color[1]*lights[j*sizeof(Light)].color[1];
-                    diffuse[2] = ndotl*objects[best_object*sizeof(Object)].diffuse_color[2]*lights[j*sizeof(Light)].color[2];
-
-                    //calculates the specular light on an object based off of the equation
-                    //Ksubs * IsubL * (V dot R)^ns only if N dot L and V dot R are greater than 0
-                    double vdotr = v3_dot(v, r);
-                    if(vdotr <= 0)
-                    {
-                        vdotr = 0;
-                    }
-
-                    if(vdotr > 0 && ndotl > 0)
-                    {
-                        specular[0] = pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[0]*lights[j*sizeof(Light)].color[0];
-                        specular[1] = pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[1]*lights[j*sizeof(Light)].color[1];
-                        specular[2] = pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[2]*lights[j*sizeof(Light)].color[2];
-                    }
-
-                    double angular_a0;
-                    double light_dir[3] = {0,0,0};
-
-                    //get the light's direction if it has one so that it can be passed into fang
-                    if(lights[j*sizeof(Light)].kind == 1)
-                    {
-                        light_dir[0] = lights[j*sizeof(Light)].spotlight.direction[0];
-                        light_dir[1] = lights[j*sizeof(Light)].spotlight.direction[1];
-                        light_dir[2] = lights[j*sizeof(Light)].spotlight.direction[2];
-                        angular_a0 = lights[j*sizeof(Light)].spotlight.angular_a0;
-                    }
-
-                    //get vobject so it can be passed into fang
-                    double vobject[3] = {0, 0, 0};
-                    v3_scale(Rdn, -1, vobject);
-                    normalize(vobject);
-
-                    //summation of all lights' effect on a given coordinate
-                    color[0] += fang(lights[j*sizeof(Light)].kind,
-                                     lights[j*sizeof(Light)].theta,
-                                     light_dir, vobject,
-                                     lights[j*sizeof(Light)].spotlight.angular_a0)
-                                *frad(lights[j*sizeof(Light)].radial_a0,
-                                      lights[j*sizeof(Light)].radial_a1,
-                                      lights[j*sizeof(Light)].radial_a2,
-                                      best_t, Ro, Rd,
-                                      lights[j*sizeof(Light)].position)*(diffuse[0] + specular[0]); //frad() * fang() * (diffuse + specular);
-                    color[1] += fang(lights[j*sizeof(Light)].kind,
-                                     lights[j*sizeof(Light)].theta,
-                                     light_dir, vobject,
-                                     lights[j*sizeof(Light)].spotlight.angular_a0)
-                                *frad(lights[j*sizeof(Light)].radial_a0,
-                                      lights[j*sizeof(Light)].radial_a1,
-                                      lights[j*sizeof(Light)].radial_a2,
-                                      best_t, Ro, Rd,
-                                      lights[j*sizeof(Light)].position)*(diffuse[1] + specular[1]);//frad() * fang() * (diffuse + specular);
-                    color[2] += fang(lights[j*sizeof(Light)].kind,
-                                     lights[j*sizeof(Light)].theta,
-                                     light_dir, vobject,
-                                     lights[j*sizeof(Light)].spotlight.angular_a0)
-                                *frad(lights[j*sizeof(Light)].radial_a0,
-                                      lights[j*sizeof(Light)].radial_a1,
-                                      lights[j*sizeof(Light)].radial_a2,
-                                      best_t, Ro, Rd,
-                                      lights[j*sizeof(Light)].position)*(diffuse[2] + specular[2]);//frad() * fang() * (diffuse + specular);
-                }
-            }
-
+            double* resultcolor = shade(best_object, best_t, numOfLights, numOfObjects, &lights[0], &objects[0], &Ro, &Rd, 1);
+            color[0] = resultcolor[0];
+            color[1] = resultcolor[1];
+            color[2] = resultcolor[2];
 
 
             if (best_t > 0 && best_t != INFINITY) //if the intersection is in the viewplane and isn't infinity, store its object's color into the buffer
