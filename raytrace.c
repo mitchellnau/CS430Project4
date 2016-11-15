@@ -778,7 +778,7 @@ double plane_intersection(double* Ro, double* Rd,
 }
 
 
-double* shoot(double* Ro, double* Rd, double best_t, int best_object, int numOfObjects, Object* objects)
+double* shoot(double* Ro, double* Rd, double best_t, int best_object, int numOfObjects, Object* objects, int extra, int closest_extra)
 {
     double t = 0;
 
@@ -786,6 +786,8 @@ double* shoot(double* Ro, double* Rd, double best_t, int best_object, int numOfO
     for (i=0; i < numOfObjects; i += 1)
     {
         t = 0;
+
+        if (i == closest_extra && extra != 0) continue;
 
         switch(objects[i*sizeof(Object)].kind)
         {
@@ -804,6 +806,10 @@ double* shoot(double* Ro, double* Rd, double best_t, int best_object, int numOfO
         default:
             fprintf(stderr, "Error: Forbidden object struct type located in memory, intersection could not be calculated.\n");
             exit(1);
+        }
+        if (t > extra && extra != 0)
+        {
+            continue;
         }
         if (t > 0 && t < best_t) //if an object is in front of another object, ensure the front-most object is displayed
         {
@@ -876,7 +882,7 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
             double best_t = INFINITY; //find the minimum best t intersection of any object
             int best_object = -1; //keep track of the corresponding object's index
 
-            double* ricochet = shoot(&Ro, &Rd, best_t, best_object, numOfObjects, &objects[0]);
+            double* ricochet = shoot(&Ro, &Rd, best_t, best_object, numOfObjects, &objects[0], 0, 0);
 
             best_t = ricochet[0];
             best_object = (int)ricochet[1];
@@ -895,45 +901,18 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                 double Rdn[3] = {0, 0, 0};
                 //Rdn = light_position - Ron;
                 v3_subtract(lights[j*sizeof(Light)].position, Ron, Rdn);
-                int closest_shadow_object = -1;
-                double best_lobjt = INFINITY;
+                double best_lobjt = INFINITY; //find the minimum best t intersection of any object
+                int closest_shadow_object = -1; //keep track of the corresponding object's index
                 double distance_to_light = sqrt(sqr(Rdn[0]) + sqr(Rdn[1]) + sqr(Rdn[2]));
                 normalize(Rdn);
-                //find the closest object to the shadow for shadow omission
-                for (k=0; k < numOfObjects; k+=1)
-                {
-                    double lobjt = 0;
 
-                    if (k == best_object) continue;
-                    //
-                    switch(objects[k*sizeof(Object)].kind)
-                    {
-                    case 0: //camera has no physical intersections
-                        break;
-                    case 1: //if the object is a sphere, find its minimum intersection
-                        lobjt = sphere_intersection(Ron, Rdn,
-                                                    objects[k*sizeof(Object)].sphere.center,
-                                                    objects[k*sizeof(Object)].sphere.radius);
-                        break;
-                    case 2: //if the object is a plane, find its point of intersection
-                        lobjt = plane_intersection(Ron, Rdn,
-                                                   objects[k*sizeof(Object)].plane.center,
-                                                   objects[k*sizeof(Object)].plane.normal);
-                        break;
-                    default:
-                        fprintf(stderr, "Error: Forbidden object struct type located in memory, intersection could not be calculated.\n");
-                        exit(1);
-                    }
-                    if (lobjt > distance_to_light)
-                    {
-                        continue;
-                    }
-                    if (lobjt > 0 && lobjt < best_lobjt) //if an object is in front of another object, ensure the front-most object is displayed
-                    {
-                        best_lobjt = lobjt;
-                        closest_shadow_object = k;
-                    }
-                }
+                //find the closest object to the shadow for shadow omission
+                double* ricochet2 = shoot(&Ron, &Rdn, best_lobjt, closest_shadow_object, numOfObjects, &objects[0], distance_to_light, best_object);
+
+                best_lobjt = ricochet2[0];
+                closest_shadow_object = (int)ricochet2[1];
+
+
                 if (closest_shadow_object == -1)
                 {
                     // N, L, R, V
