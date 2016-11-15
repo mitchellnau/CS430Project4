@@ -777,6 +777,48 @@ double plane_intersection(double* Ro, double* Rd,
     return t;
 }
 
+
+double* shoot(double* Ro, double* Rd, double best_t, int best_object, int numOfObjects, Object* objects)
+{
+    double t = 0;
+
+    int i;
+    for (i=0; i < numOfObjects; i += 1)
+    {
+        t = 0;
+
+        switch(objects[i*sizeof(Object)].kind)
+        {
+        case 0: //camera has no physical intersections
+            break;
+        case 1: //if the object is a sphere, find its minimum intersection
+            t = sphere_intersection(Ro, Rd,
+                                    objects[i*sizeof(Object)].sphere.center,
+                                    objects[i*sizeof(Object)].sphere.radius);
+            break;
+        case 2: //if the object is a plane, find its point of intersection
+            t = plane_intersection(Ro, Rd,
+                                   objects[i*sizeof(Object)].plane.center,
+                                   objects[i*sizeof(Object)].plane.normal);
+            break;
+        default:
+            fprintf(stderr, "Error: Forbidden object struct type located in memory, intersection could not be calculated.\n");
+            exit(1);
+        }
+        if (t > 0 && t < best_t) //if an object is in front of another object, ensure the front-most object is displayed
+        {
+            best_t = t;
+            best_object = i;
+        }
+    }
+    double* returnVals = malloc(sizeof(double)*2);
+    returnVals[0] = best_t;
+    returnVals[1] = (double)best_object;
+    return returnVals;
+}
+
+
+
 //this function takes in the number of objects and lights in the input json file, memory where those objects and lights are stored,
 //and a buffer to store the data of each pixel.  It then uses the camera information to display the intersections
 //of raycasts and the objects those raycasts are hitting to store RGB pixel values for that spot of intersection
@@ -830,38 +872,14 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
             };
             normalize(Rd);
 
+
             double best_t = INFINITY; //find the minimum best t intersection of any object
-            double t = 0;
             int best_object = -1; //keep track of the corresponding object's index
 
-            for (i=0; i < numOfObjects; i += 1)
-            {
-                t = 0;
+            double* ricochet = shoot(&Ro, &Rd, best_t, best_object, numOfObjects, &objects[0]);
 
-                switch(objects[i*sizeof(Object)].kind)
-                {
-                case 0: //camera has no physical intersections
-                    break;
-                case 1: //if the object is a sphere, find its minimum intersection
-                    t = sphere_intersection(Ro, Rd,
-                                            objects[i*sizeof(Object)].sphere.center,
-                                            objects[i*sizeof(Object)].sphere.radius);
-                    break;
-                case 2: //if the object is a plane, find its point of intersection
-                    t = plane_intersection(Ro, Rd,
-                                           objects[i*sizeof(Object)].plane.center,
-                                           objects[i*sizeof(Object)].plane.normal);
-                    break;
-                default:
-                    fprintf(stderr, "Error: Forbidden object struct type located in memory, intersection could not be calculated.\n");
-                    exit(1);
-                }
-                if (t > 0 && t < best_t) //if an object is in front of another object, ensure the front-most object is displayed
-                {
-                    best_t = t;
-                    best_object = i;
-                }
-            }
+            best_t = ricochet[0];
+            best_object = (int)ricochet[1];
 
             double color[3] = {0,0,0}; //ambient lighting is 0
 
