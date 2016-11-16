@@ -790,7 +790,7 @@ double plane_intersection(double* Ro, double* Rd,
     return t;
 }
 
-
+//this function calculates the closest t-value and closest object based on the input parameters of the function
 double* shoot(double* Ro, double* Rd, double best_t, int best_object, int numOfObjects, Object* objects, int extra, int closest_extra)
 {
     double t = 0;
@@ -836,39 +836,22 @@ double* shoot(double* Ro, double* Rd, double best_t, int best_object, int numOfO
     return returnVals;
 }
 
-/*color shade(objectid o, position x, vector ur , int level)
-{
-  if(level > max recursion level) return black;
-  else{
-        um = reflection_vector(x, o, ur);
-        (om,t) = shoot(x,um);
-        if(t== INFINITY)
-            color = background_color;
-        else{
-            m_color = shade(om,x+t*um,um, level + 1);
-            color = directshade(o,x,ur, m_color, -um);
-            }
-        for(each light i in the scene)
-        {
-            if(light i is visible fromx)
-            color += directshade(o,x,ur, light[i].color, light[i].direction);
-        }
-        return color;
-  }
-}*/
-
-
+//this function calculates the color for a given coordinate based on the vector of the ray cast,
+//that vector's origin, and any given object or light.  It also support recursion for the calculation of
+//reflection and refraction.
 double* shade(double best_t, int best_object, int numOfObjects, Object* objects, int numOfLights, Light* lights,  double* Ro, double* Rd, int level)
 {
     double color[3] = {0,0,0}; //ambient lighting is 0
-    if(level > MAX_RECURSION){
+    if(level > MAX_RECURSION) //check the base case
+    {
         double* returnVal = malloc(sizeof(double)*3);
         returnVal[0] = color[0];
         returnVal[1] = color[1];
         returnVal[2] = color[2];
         return returnVal;
     }
-    else{
+    else //otherwise calculate the color
+    {
         //Ron = best_t * Rd + Ro;
         double Ron[3] = {0, 0, 0};
         double test[3] = {0, 0, 0};
@@ -1018,11 +1001,12 @@ double* shade(double best_t, int best_object, int numOfObjects, Object* objects,
             }
         }
 
+        //grab the closest object's reflectivity, refractivity, and index of refraction
         double kr = objects[best_object*sizeof(Object)].sphere.reflectivity;
         double kt = objects[best_object*sizeof(Object)].sphere.refractivity;
         double ior = objects[best_object*sizeof(Object)].sphere.ior;
 
-        if((kr != 0 && kt != 0) && kt+kr<1)
+        if((kr != 0 || kt != 0) && kt+kr<1) //only calculate reflection/refraction if there is reflection/refraction values and their sum is less than 1
         {
             // N, L, R, V
             double n[3] = {0, 0, 0};
@@ -1051,6 +1035,7 @@ double* shade(double best_t, int best_object, int numOfObjects, Object* objects,
             }
             normalize(n);
 
+            //reflection calculation
             double reflection[3] = {0,0,0};
             v3_reflect(n, Rd, reflection);
             normalize(reflection);
@@ -1069,7 +1054,7 @@ double* shade(double best_t, int best_object, int numOfObjects, Object* objects,
             double* reflected_color = shade(newbest_t, newbest_object, numOfObjects, &objects[0], numOfLights, &lights[0], &Roprime, &reflection, level+1);
 
 
-
+            //refraction calculation
             double refraction[3] = {0,0,0};
 
             double ncrossrd[3] = {0,0,0};
@@ -1111,12 +1096,14 @@ double* shade(double best_t, int best_object, int numOfObjects, Object* objects,
 
             if(newbest_t != INFINITY)
             {
+                //sum of the different I values
                 color[0] = (1-kr-kt)*color[0]+kr*reflected_color[0]+kt*refracted_color[0];//+kr*shade(recursive call to shade the reflection vector)+kt*shade(recursive call to shade the refraction vector)
                 color[1] = (1-kr-kt)*color[1]+kr*reflected_color[1]+kt*refracted_color[1];
                 color[2] = (1-kr-kt)*color[2]+kr*reflected_color[2]+kt*refracted_color[2];
             }
         }
 
+        //return the final color value
         double* returnVal = malloc(sizeof(double)*3);
         returnVal[0] = color[0];
         returnVal[1] = color[1];
