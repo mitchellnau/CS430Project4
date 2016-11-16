@@ -7,13 +7,15 @@ To use this program...
 
 	1.  Compile it with the provided makefile (requires gcc).
 
-	2a.  Use the command "200 200 input.json output.ppm" to read the input json file
+	2.  Use the command "200 200 input.json output.ppm" to read the input json file
 	     and write the objects illuminated within that json file to a p3 output.ppm 200x200 pixel image file.
 
-	2b.  You can alternatively use ...json to test spotlight illumination.
+If you would like to verify the raytracing...
 
-If you would like to verify the raycasting and illumination...
+	1.  Open output.ppm with software that can open .ppm (P3) files (e.g. GIMP)
 
+	2.  Observe that the sphere is illuminated, and has light reflecting onto it from the plane beneath it.
+		NOTE: No matter what epsilon I tried to use, the sphere came out grainy.
 
 Invalid inputs and file contents will close the program.
 This program is designed to use eight bits per color channel.
