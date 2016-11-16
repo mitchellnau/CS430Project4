@@ -1022,7 +1022,7 @@ double* shade(double best_t, int best_object, int numOfObjects, Object* objects,
         double kt = objects[best_object*sizeof(Object)].sphere.refractivity;
         double ior = objects[best_object*sizeof(Object)].sphere.ior;
 
-        if(kr != 0 && kt != 0)
+        if((kr != 0 && kt != 0) && kt+kr<1)
         {
             // N, L, R, V
             double n[3] = {0, 0, 0};
