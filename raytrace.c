@@ -1068,11 +1068,52 @@ double* shade(double best_t, int best_object, int numOfObjects, Object* objects,
 
             double* reflected_color = shade(newbest_t, newbest_object, numOfObjects, &objects[0], numOfLights, &lights[0], &Roprime, &reflection, level+1);
 
+
+
+            double refraction[3] = {0,0,0};
+
+            double ncrossrd[3] = {0,0,0};
+            v3_cross(n, Rd, ncrossrd);
+            double magnitudeNcrossrd;
+            magnitudeNcrossrd = sqrt(sqr(ncrossrd[0]) + sqr(ncrossrd[1]) + sqr(ncrossrd[2]));
+            double a[3] = {0,0,0};
+            v3_scale(ncrossrd, 1.0/magnitudeNcrossrd, a);
+
+            double b[3] = {0,0,0};
+            v3_cross(a, n, b);
+
+            double magnitudeRd = sqrt(sqr(Rd[0]) + sqr(Rd[1]) + sqr(Rd[2]));
+            double magnitudeN = sqrt(sqr(n[0]) + sqr(n[1]) + sqr(n[2]));
+            double unitRd[3] = {0,0,0};
+            double unitN[3] = {0,0,0};
+            v3_scale(Rd, 1.0/magnitudeRd, unitRd);
+            v3_scale(n, 1.0/magnitudeN, unitN);
+
+            double theta = acos(v3_dot(unitRd, unitN));
+            double phi = asin(sin(theta)/ior);
+
+            double temp[3] = {0,0,0};
+            v3_scale(n, -cos(phi), temp);
+            v3_scale(b, sin(phi), refraction);
+
+            v3_add(refraction, temp, refraction);
+
+
+            double refnewbest_t = INFINITY; //find the minimum best t intersection of any object
+            int refnewbest_object = -1; //keep track of the corresponding object's index
+            double* refnewricochet = shoot(&Ron, &refraction, refnewbest_t, refnewbest_object, numOfObjects, &objects[0], 0, 0);
+
+            refnewbest_t = refnewricochet[0];
+            refnewbest_object = (int)refnewricochet[1];
+
+
+            double* refracted_color = shade(refnewbest_t, refnewbest_object, numOfObjects, &objects[0], numOfLights, &lights[0], &Ron, &refraction, level+1);
+
             if(newbest_t != INFINITY)
             {
-                color[0] = (1-kr-kt)*color[0]+kr*reflected_color[0];//+kr*shade(recursive call to shade the reflection vector)+kt*shade(recursive call to shade the refraction vector)
-                color[1] = (1-kr-kt)*color[1]+kr*reflected_color[0];
-                color[2] = (1-kr-kt)*color[2]+kr*reflected_color[0];
+                color[0] = (1-kr-kt)*color[0]+kr*reflected_color[0]+kt*refracted_color[0];//+kr*shade(recursive call to shade the reflection vector)+kt*shade(recursive call to shade the refraction vector)
+                color[1] = (1-kr-kt)*color[1]+kr*reflected_color[1]+kt*refracted_color[1];
+                color[2] = (1-kr-kt)*color[2]+kr*reflected_color[2]+kt*refracted_color[2];
             }
         }
 
