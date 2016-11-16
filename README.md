@@ -16,6 +16,7 @@ If you would like to verify the raytracing...
 
 	2.  Observe that the sphere is illuminated, and has light reflecting onto it from the plane beneath it.
 		NOTE: No matter what epsilon I tried to use, the sphere came out grainy.
+		NOTE: If an object's reflection+refraction exceeds 1, they are not calculated for that object.
 
 Invalid inputs and file contents will close the program.
 This program is designed to use eight bits per color channel.
