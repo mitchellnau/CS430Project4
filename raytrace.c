@@ -857,8 +857,46 @@ double* shoot(double* Ro, double* Rd, double best_t, int best_object, int numOfO
   }
 }*/
 
-double* directshade(double* n, double* l, double* v, double* r, double* Rdn, double* Ro, double* Rd, int best_object, double best_t, Object* objects, Light* lights, int j)
+double* directshade(double* Ron, double* Rdn, double* Ro, double* Rd, int best_object, double best_t, Object* objects, Light* lights, int j)
 {
+    // N, L, R, V
+    double n[3] = {0, 0, 0};
+    double l[3] = {0, 0, 0};
+    double r[3] = {0, 0, 0};
+    double v[3] = {0, 0, 0};
+
+
+    //N = closest_object->normal; // plane
+    //N = Ron - closest_object->center; // sphere
+    if(objects[best_object*sizeof(Object)].kind  == 0)
+    {
+        //camera found, do nothing
+    }
+    else if(objects[best_object*sizeof(Object)].kind  == 1)
+    {
+        v3_subtract(Ron, objects[best_object*sizeof(Object)].sphere.center, n);
+    }
+    else if(objects[best_object*sizeof(Object)].kind  == 2)
+    {
+        v3_scale(objects[best_object*sizeof(Object)].plane.normal, 1.0, n);
+    }
+    else
+    {
+        fprintf(stderr, "Error: Unexpected object struct type located in memory, N could not be calculated.\n");
+        exit(1);
+    }
+    normalize(n);
+
+    //L = Rdn; // light_position - Ron;
+    v3_scale(Rdn, 1.0, l);
+    normalize(l);
+
+    //R = reflection of L = (2N dot L)N - L;
+    v3_reflect(n, l, r);
+
+
+    //V = Rd;
+    v3_scale(Rd, -1.0, v);
 
     double diffuse[3] = {0, 0, 0};
     double specular[3] = {0, 0, 0};
@@ -977,46 +1015,7 @@ double* shade(double best_t, int best_object, int numOfObjects, Object* objects,
 
             if (closest_shadow_object == -1)
             {
-                // N, L, R, V
-                double n[3] = {0, 0, 0};
-                double l[3] = {0, 0, 0};
-                double r[3] = {0, 0, 0};
-                double v[3] = {0, 0, 0};
-
-
-                //N = closest_object->normal; // plane
-                //N = Ron - closest_object->center; // sphere
-                if(objects[best_object*sizeof(Object)].kind  == 0)
-                {
-                    //camera found, do nothing
-                }
-                else if(objects[best_object*sizeof(Object)].kind  == 1)
-                {
-                    v3_subtract(Ron, objects[best_object*sizeof(Object)].sphere.center, n);
-                }
-                else if(objects[best_object*sizeof(Object)].kind  == 2)
-                {
-                    v3_scale(objects[best_object*sizeof(Object)].plane.normal, 1.0, n);
-                }
-                else
-                {
-                    fprintf(stderr, "Error: Unexpected object struct type located in memory, N could not be calculated.\n");
-                    exit(1);
-                }
-                normalize(n);
-
-                //L = Rdn; // light_position - Ron;
-                v3_scale(Rdn, 1.0, l);
-                normalize(l);
-
-                //R = reflection of L = (2N dot L)N - L;
-                v3_reflect(n, l, r);
-
-
-                //V = Rd;
-                v3_scale(Rd, -1.0, v);
-
-                double* directShaded = directshade(&n, &l, &v, &r, &Rdn, &Ro, &Rd,
+                double* directShaded = directshade(&Ron, &Rdn, &Ro, &Rd,
                                                    best_object, best_t, &objects[0], &lights[0], j);
 
 
