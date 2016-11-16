@@ -34,6 +34,16 @@ static inline void v3_cross(V3 a, V3 b, V3 c)
     c[2] = a[0]*b[1] - a[1]*b[0];
 }
 
+static inline void v3_reflect(V3 n, V3 b, V3 r)
+{
+    double temp[3] = {0, 0, 0};
+    double scalar;
+    v3_scale(n, 2.0, temp);
+    scalar = v3_dot(temp, b);
+    v3_scale(n, scalar, temp);
+    v3_subtract(temp, b, r);
+}
+
 //This function returns the input value squared
 static inline double sqr(double v)
 {
